@@ -2,33 +2,49 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+// Класс для настройки параметров ландшафта
+public class TerrainSettings
+{
+    public int xSize = 20;
+    public int zSize = 20;
+    public float smoothness = 0.3f;
+    public float heightMultiplier = 2f;
+    public Gradient gradient;
 
+    public TerrainSettings(int xSize, int zSize, float smoothness, float heightMultiplier, Gradient gradient)
+    {
+        this.xSize = xSize;
+        this.zSize = zSize;
+        this.smoothness = smoothness;
+        this.heightMultiplier = heightMultiplier;
+        this.gradient = gradient;
+    }
+}
+
+// Основной класс генератора сетки
 [RequireComponent(typeof(MeshFilter))]
 public class MeshGenerator : MonoBehaviour
 {
-
     Mesh mesh;
-
     Vector3[] vertices;
     int[] triangles;
-
     Color[] colors;
 
-    public int xSize = 20;
-    public int zSize = 20;
+    // Интерактивные параметры ландшафта
+    public TerrainSettings terrainSettings;
 
-    public Gradient gradient;
-
-    float minTerrainHeigth;
-    float maxTerrainHeigth;
+    float minTerrainHeight;
+    float maxTerrainHeight;
 
     void Start()
     {
         mesh = new Mesh();
         GetComponent<MeshFilter>().mesh = mesh;
 
+        // Инициализация параметров ландшафта
+        terrainSettings = new TerrainSettings(20, 20, 0.3f, 2f, new Gradient());
+
         StartCoroutine(CreateShape());
-        
     }
 
     private void Update()
@@ -38,35 +54,35 @@ public class MeshGenerator : MonoBehaviour
 
     IEnumerator CreateShape()
     {
+        int xSize = terrainSettings.xSize;
+        int zSize = terrainSettings.zSize;
+
         vertices = new Vector3[(xSize + 1) * (zSize + 1)];
 
         for (int i = 0, z = 0; z <= zSize; z++)
         {
             for (int x = 0; x <= xSize; x++)
             {
-                float y = Mathf.PerlinNoise(x * .3f, z * .3f) * 2f;
+                float y = Mathf.PerlinNoise(x * terrainSettings.smoothness, z * terrainSettings.smoothness) * terrainSettings.heightMultiplier;
                 vertices[i] = new Vector3(x, y, z);
 
-                if (y > maxTerrainHeigth)
-                    maxTerrainHeigth = y;
-                if (y < minTerrainHeigth)
-                    minTerrainHeigth = y;
+                if (y > maxTerrainHeight)
+                    maxTerrainHeight = y;
+                if (y < minTerrainHeight)
+                    minTerrainHeight = y;
 
                 i++;
             }
         }
 
-
         triangles = new int[xSize * zSize * 6];
         int vert = 0;
         int tris = 0;
-        
 
         for (int z = 0; z < zSize; z++)
         {
             for (int x = 0; x < xSize; x++)
             {
-
                 triangles[tris + 0] = vert + 0;
                 triangles[tris + 1] = vert + xSize + 1;
                 triangles[tris + 2] = vert + 1;
@@ -82,14 +98,15 @@ public class MeshGenerator : MonoBehaviour
             vert++;
         }
 
+        // Генерация цветов на основе высоты и градиента
         colors = new Color[vertices.Length];
 
         for (int i = 0, z = 0; z <= zSize; z++)
         {
             for (int x = 0; x <= xSize; x++)
             {
-                float height = Mathf.InverseLerp(minTerrainHeigth, maxTerrainHeigth, vertices[i].y);
-                colors[i] = gradient.Evaluate(height);
+                float height = Mathf.InverseLerp(minTerrainHeight, maxTerrainHeight, vertices[i].y);
+                colors[i] = terrainSettings.gradient.Evaluate(height);
                 i++;
             }
         }
@@ -106,14 +123,29 @@ public class MeshGenerator : MonoBehaviour
         mesh.RecalculateNormals();
     }
 
-    private void OnDrawGizmos()
+    // Добавляем возможность управления параметрами через UI или инпуты
+    public void SetSmoothness(float smoothness)
     {
-        if(vertices == null)
-            return;
+        terrainSettings.smoothness = smoothness;
+        StartCoroutine(CreateShape());
+    }
 
-        for(int i = 0; i < vertices.Length; i++)
-        {
-            Gizmos.DrawSphere(vertices[i], .1f);
-        }
+    public void SetHeightMultiplier(float heightMultiplier)
+    {
+        terrainSettings.heightMultiplier = heightMultiplier;
+        StartCoroutine(CreateShape());
+    }
+
+    public void SetDetailLevel(int xSize, int zSize)
+    {
+        terrainSettings.xSize = xSize;
+        terrainSettings.zSize = zSize;
+        StartCoroutine(CreateShape());
+    }
+
+    public void SetGradient(Gradient gradient)
+    {
+        terrainSettings.gradient = gradient;
+        StartCoroutine(CreateShape());
     }
 }
