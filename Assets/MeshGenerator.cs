@@ -29,6 +29,7 @@ public class MeshGenerator : MonoBehaviour
     Vector3[] vertices;
     int[] triangles;
     Color[] colors;
+    Vector2[] uvs;
 
     // Интерактивные параметры ландшафта
     public TerrainSettings terrainSettings;
@@ -41,10 +42,22 @@ public class MeshGenerator : MonoBehaviour
         mesh = new Mesh();
         GetComponent<MeshFilter>().mesh = mesh;
 
-        // Инициализация параметров ландшафта
-        terrainSettings = new TerrainSettings(20, 20, 0.3f, 2f, new Gradient());
+        Material terrainMaterial = Resources.Load<Material>("TerrainMaterial");
+        if (terrainMaterial != null)
+        {
+            GetComponent<MeshRenderer>().material = terrainMaterial;
 
-        StartCoroutine(CreateShape());
+            // Установить минимальную и максимальную высоту в шейдер
+            terrainMaterial.SetFloat("_MinHeight", minTerrainHeight);
+            terrainMaterial.SetFloat("_MaxHeight", maxTerrainHeight);
+        }
+        else
+        {
+            Debug.LogError("TerrainMaterial not found in Resources folder.");
+        }
+
+        terrainSettings = new TerrainSettings(20, 20, 0.3f, 2f, new Gradient());
+        CreateShape();
     }
 
     private void Update()
@@ -52,7 +65,7 @@ public class MeshGenerator : MonoBehaviour
         UpdateMesh();
     }
 
-    IEnumerator CreateShape()
+    void CreateShape()
     {
         int xSize = terrainSettings.xSize;
         int zSize = terrainSettings.zSize;
@@ -93,7 +106,7 @@ public class MeshGenerator : MonoBehaviour
                 vert++;
                 tris += 6;
 
-                yield return new WaitForSeconds(.01f);
+                //yield return new WaitForSeconds(.01f);
             }
             vert++;
         }
@@ -110,6 +123,17 @@ public class MeshGenerator : MonoBehaviour
                 i++;
             }
         }
+
+        uvs = new Vector2[vertices.Length];
+
+        for (int i = 0, z = 0; z <= zSize; z++)
+        {
+            for (int x = 0; x <= xSize; x++)
+            {
+                uvs[i] = new Vector2((float)x / xSize, (float)z / zSize);
+                i++;
+            }
+        }
     }
 
     void UpdateMesh()
@@ -119,6 +143,7 @@ public class MeshGenerator : MonoBehaviour
         mesh.vertices = vertices;
         mesh.triangles = triangles;
         mesh.colors = colors;
+        mesh.uv = uvs;
 
         mesh.RecalculateNormals();
     }
@@ -127,28 +152,25 @@ public class MeshGenerator : MonoBehaviour
     public void SetSmoothness(float smoothness)
     {
         terrainSettings.smoothness = smoothness;
-        StartCoroutine(CreateShape());
+        CreateShape();
     }
 
     public void SetHeightMultiplier(float heightMultiplier)
     {
         terrainSettings.heightMultiplier = heightMultiplier;
-        StartCoroutine(CreateShape());
+        CreateShape();
     }
 
     public void SetDetailLevel(int xSize, int zSize)
     {
         terrainSettings.xSize = xSize;
         terrainSettings.zSize = zSize;
-        StartCoroutine(CreateShape());
+        CreateShape();
     }
 
     public void SetGradient(Gradient gradient)
     {
         terrainSettings.gradient = gradient;
-        StartCoroutine(CreateShape());
+        CreateShape();
     }
 }
-
-
-
