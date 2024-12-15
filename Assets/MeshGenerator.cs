@@ -11,13 +11,21 @@ public class TerrainSettings
     public float heightMultiplier = 2f;
     public Gradient gradient;
 
-    public TerrainSettings(int xSize, int zSize, float smoothness, float heightMultiplier, Gradient gradient)
+    // Новые параметры для фракталов
+    public int octaves = 4;
+    public float persistence = 0.5f;
+    public float lacunarity = 2f;
+
+    public TerrainSettings(int xSize, int zSize, float smoothness, float heightMultiplier, Gradient gradient, int octaves, float persistence, float lacunarity)
     {
         this.xSize = xSize;
         this.zSize = zSize;
         this.smoothness = smoothness;
         this.heightMultiplier = heightMultiplier;
         this.gradient = gradient;
+        this.octaves = octaves;
+        this.persistence = persistence;
+        this.lacunarity = lacunarity;
     }
 }
 
@@ -56,7 +64,7 @@ public class MeshGenerator : MonoBehaviour
             Debug.LogError("TerrainMaterial not found in Resources folder.");
         }
 
-        terrainSettings = new TerrainSettings(20, 20, 0.3f, 2f, new Gradient());
+        terrainSettings = new TerrainSettings(20, 20, 0.3f, 2f, new Gradient(), 4, 0.5f, 2f);
         CreateShape();
     }
 
@@ -76,7 +84,7 @@ public class MeshGenerator : MonoBehaviour
         {
             for (int x = 0; x <= xSize; x++)
             {
-                float y = Mathf.PerlinNoise(x * terrainSettings.smoothness, z * terrainSettings.smoothness) * terrainSettings.heightMultiplier;
+                float y = FractalNoise(x, z) * terrainSettings.heightMultiplier;
                 vertices[i] = new Vector3(x, y, z);
 
                 if (y > maxTerrainHeight)
@@ -105,13 +113,10 @@ public class MeshGenerator : MonoBehaviour
 
                 vert++;
                 tris += 6;
-
-                //yield return new WaitForSeconds(.01f);
             }
             vert++;
         }
 
-        // Генерация цветов на основе высоты и градиента
         colors = new Color[vertices.Length];
 
         for (int i = 0, z = 0; z <= zSize; z++)
@@ -136,6 +141,27 @@ public class MeshGenerator : MonoBehaviour
         }
     }
 
+    float FractalNoise(float x, float z)
+    {
+        float amplitude = 1;
+        float frequency = 1;
+        float noiseHeight = 0;
+
+        for (int i = 0; i < terrainSettings.octaves; i++)
+        {
+            float sampleX = x * terrainSettings.smoothness * frequency;
+            float sampleZ = z * terrainSettings.smoothness * frequency;
+
+            float perlinValue = Mathf.PerlinNoise(sampleX, sampleZ) * 2 - 1;
+            noiseHeight += perlinValue * amplitude;
+
+            amplitude *= terrainSettings.persistence;
+            frequency *= terrainSettings.lacunarity;
+        }
+
+        return noiseHeight;
+    }
+
     void UpdateMesh()
     {
         mesh.Clear();
@@ -148,7 +174,7 @@ public class MeshGenerator : MonoBehaviour
         mesh.RecalculateNormals();
     }
 
-    // Добавляем возможность управления параметрами через UI или инпуты
+    // Методы для управления параметрами
     public void SetSmoothness(float smoothness)
     {
         terrainSettings.smoothness = smoothness;
@@ -171,6 +197,24 @@ public class MeshGenerator : MonoBehaviour
     public void SetGradient(Gradient gradient)
     {
         terrainSettings.gradient = gradient;
+        CreateShape();
+    }
+
+    public void SetOctaves(int octaves)
+    {
+        terrainSettings.octaves = octaves;
+        CreateShape();
+    }
+
+    public void SetPersistence(float persistence)
+    {
+        terrainSettings.persistence = persistence;
+        CreateShape();
+    }
+
+    public void SetLacunarity(float lacunarity)
+    {
+        terrainSettings.lacunarity = lacunarity;
         CreateShape();
     }
 }
