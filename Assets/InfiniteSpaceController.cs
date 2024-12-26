@@ -1,41 +1,43 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class InfiniteSpaceController : MonoBehaviour
 {
-    public Transform player; // Об'єкт камери або гравця, якого ми відстежуємо
-    public Transform terrain; // Ландшафт
-    public Transform water; // Вода
+    public Transform player; // Камера або об'єкт, який ми відстежуємо
+    public Transform terrain; // Ландшафт, який треба переміщувати
+    public Transform water; // Водна поверхня, якщо використовується
+    public float boundary = 50f; // Відстань від центру до межі простору
 
-    // Встановлюємо межу, після якої об'єкти зміщуються
-    public float boundary = 5f;
+    private Vector3 startPosition;
+
+    void Start()
+    {
+        // Зберігаємо початкову позицію об'єкта
+        startPosition = terrain.position;
+    }
 
     void Update()
     {
-        CheckAndReposition(terrain);
-        CheckAndReposition(water);
+        // Перевіряємо, чи вийшов гравець за межі простору
+        Vector3 offset = player.position - startPosition;
+
+        if (Mathf.Abs(offset.x) > boundary || Mathf.Abs(offset.z) > boundary)
+        {
+            RepositionTerrain();
+        }
     }
 
-    // Метод перевіряє, чи вийшов об'єкт за межу, і переміщує його
-    void CheckAndReposition(Transform obj)
+    private void RepositionTerrain()
     {
-        Vector3 offset = Vector3.zero;
+        // Обчислюємо кількість "зсувів", які потрібно зробити
+        int shiftX = Mathf.RoundToInt((player.position.x - startPosition.x) / (boundary * 2)) * (int)(boundary * 2);
+        int shiftZ = Mathf.RoundToInt((player.position.z - startPosition.z) / (boundary * 2)) * (int)(boundary * 2);
 
-        // Якщо гравець перемістився за межу по осі X
-        if (player.position.x > boundary)
-            offset.x -= boundary * 2;
-        else if (player.position.x < -boundary)
-            offset.x += boundary * 2;
+        // Переміщуємо ландшафт і водну поверхню
+        terrain.position = new Vector3(startPosition.x + shiftX, terrain.position.y, startPosition.z + shiftZ);
 
-        // Якщо гравець перемістився за межу по осі Z
-        if (player.position.z > boundary)
-            offset.z -= boundary * 2;
-        else if (player.position.z < -boundary)
-            offset.z += boundary * 2;
-
-        // Якщо є зміщення, переміщуємо об'єкт
-        if (offset != Vector3.zero)
-            obj.position += offset;
+        if (water != null)
+        {
+            water.position = new Vector3(terrain.position.x, water.position.y, terrain.position.z);
+        }
     }
 }
